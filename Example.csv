@@ -1,0 +1,11 @@
+root,mode,environment,subscription
+RetroBurn,BizUnitA,Production,
+RetroBurn,BizUnitA,Staging,
+RetroBurn,BizUnitA,Dev-Test,Federal-CSU-CSA-RetroBurn
+RetroBurn,BizUnitA,DR,Federal-CSU-CSA-RetroBurn-Mgmt
+RetroBurn,BizUnitB,Production,Federal-CSU-CSA-RetroBurn-Identity
+RetroBurn,BizUnitB,Staging,
+RetroBurn,BizUnitB,Dev-Test,
+RetroBurn,BizUnitC,Production,Federal-CSU-CSA-RetroBurn-Connectivity
+RetroBurn,BizUnitC,Staging,
+RetroBurn,BizUnitC,Dev-Test,
