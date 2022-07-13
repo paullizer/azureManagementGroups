@@ -1,7 +1,7 @@
 <#PSScriptInfo
 
 .VERSION 
-    1.0
+    1.1
 
 .GUID 
     931b571e-53d7-49c6-a316-0da3d930c4c0
@@ -82,6 +82,8 @@ Param(
     [Parameter(Mandatory=$true)]
     [string]$csvFilePath,
     [Parameter(Mandatory=$false)]
+    [string]$tenantId,
+    [Parameter(Mandatory=$false)]
     [switch]$moveSubscriptions
 
     )
@@ -138,17 +140,48 @@ switch ( $uniqueCsvModeMgs.count )
         }
 }
 
-#Connect-AzAccount
+Connect-AzAccount
 
 try {
-    $tenant = Get-AzTenant
+    if ($tenantId){
+        $tenant = Get-AzTenant -TenantId $tenantId
+    } else {
+        $tenant = Get-AzTenant
+    }
 }
 catch {
 
 }
 
 try {
-    $azureManagementGroupStructure = Get-AzManagementGroup  -Expand -Recurse $tenant.Id
+    if ($tenant.count -gt 1){
+            $boolFoundTenant = $false
+            Write-host "You have more than one tenant associated with your account."
+            foreach ($ten in $tenant){
+                Write-host ("`t" + $ten.Name + ": " + $ten.Id)
+            }
+
+            while(!$boolFoundTenant){
+                $tenantId = Read-host "`nPlease enter the Tenant Id for the appropriate tenant"
+                $tenant = Get-AzTenant -TenantId $tenantId
+                if ($tenant) {
+                    Write-Host "`nYou've selected:"
+                    foreach ($ten in $tenant){
+                        Write-host ("`t" + $ten.Name + ": " + $ten.Id)
+                        $boolFoundTenant = $true
+                    }
+                } else {
+                    Write-host "`nYou failed to enter a correct Tenant Id, please be careful when performing your copy and paste."
+                }
+            }
+        }
+}
+catch {
+
+}
+
+try {
+        $azureManagementGroupStructure = Get-AzManagementGroup  -Expand -Recurse $tenant.Id
 }
 catch {
     
