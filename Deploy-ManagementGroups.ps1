@@ -1,7 +1,7 @@
 <#PSScriptInfo
 
 .VERSION 
-    1.1
+    1.5
 
 .GUID 
     931b571e-53d7-49c6-a316-0da3d930c4c0
@@ -91,6 +91,7 @@ Param(
 $ErrorActionPreference = 'SilentlyContinue'
 Set-Item -Path Env:\SuppressAzurePowerShellBreakingChangeWarnings -Value $true
 Set-Item -Path Env:\SuppressAzureRmModulesRetiringWarning  -Value $true
+Clear-Host
 
 $csvManagementGroupStructure = Import-Csv $csvFilePath | Select-Object *,"Environment_Id"
 
@@ -140,41 +141,59 @@ switch ( $uniqueCsvModeMgs.count )
         }
 }
 
-Connect-AzAccount
 
-try {
-    if ($tenantId){
+if ($tenantId){
+    try {
         $tenant = Get-AzTenant -TenantId $tenantId
-    } else {
+    }
+    catch {
+
+    }
+} else {
+    try {
+        $connectionAz = Connect-AzAccount -WarningAction Ignore
         $tenant = Get-AzTenant
     }
+    catch {
+    
+    }
 }
-catch {
 
+
+
+if ($tenant.count -gt 1){
+    $boolFoundTenant = $false
+    Write-host "`nYou have more than one tenant associated with your account."
+    foreach ($ten in $tenant){
+        Write-host ("`t" + $ten.Name + ": " + $ten.Id)
+    }
+
+    while(!$boolFoundTenant){
+        $tenantId = Read-host "`nPlease enter the Tenant Id for the appropriate tenant"
+        try {
+            $tenant = Get-AzTenant -TenantId $tenantId
+        }
+        catch {
+
+        }
+        if ($tenant) {
+            Write-Host "`nYou've selected:"
+            foreach ($ten in $tenant){
+                Write-host ("`t" + $ten.Name + ": " + $ten.Id)
+                $boolFoundTenant = $true
+            }
+        } else {
+            Write-host "`nYou failed to enter a correct Tenant Id, please be careful when performing your copy and paste."
+        }
+    }
 }
 
 try {
-    if ($tenant.count -gt 1){
-            $boolFoundTenant = $false
-            Write-host "You have more than one tenant associated with your account."
-            foreach ($ten in $tenant){
-                Write-host ("`t" + $ten.Name + ": " + $ten.Id)
-            }
-
-            while(!$boolFoundTenant){
-                $tenantId = Read-host "`nPlease enter the Tenant Id for the appropriate tenant"
-                $tenant = Get-AzTenant -TenantId $tenantId
-                if ($tenant) {
-                    Write-Host "`nYou've selected:"
-                    foreach ($ten in $tenant){
-                        Write-host ("`t" + $ten.Name + ": " + $ten.Id)
-                        $boolFoundTenant = $true
-                    }
-                } else {
-                    Write-host "`nYou failed to enter a correct Tenant Id, please be careful when performing your copy and paste."
-                }
-            }
-        }
+    Write-host ("`nRequesting Az Account Connection to Tenant: " + $tenant.Id)
+    $connectionAz = Connect-AzAccount -Tenant $tenant.Id -WarningAction Ignore
+    #$subs =  Get-AzSubscription -TenantId $tenant.Id
+    #$context = Set-AzContext -Tenant $tenant.Id -Subscription $subs[0].name
+    Write-Host ("`tSuccessfully connected to " + $connectionAz.Context.Tenant.Id)
 }
 catch {
 
@@ -188,7 +207,7 @@ catch {
 }
 
 # Root Work
-Write-Host "Evaluating Root Existence"
+Write-Host "`nEvaluating Root Existence"
 if ($uniqueCsvRootMg -ne $azureManagementGroupStructure.Children.DisplayName){
 
     # Create Root Management Group
@@ -208,7 +227,7 @@ if ($uniqueCsvRootMg -ne $azureManagementGroupStructure.Children.DisplayName){
 }
 
 # Mode Work
-Write-Host "Evaluating Mode Existence"
+Write-Host "`nEvaluating Mode Existence"
 
 foreach ($uniqueCsvModeMg in $uniqueCsvModeMgs){
 
@@ -310,8 +329,8 @@ if ($moveSubscriptions){
             $subMoveCount++
         }
     }
-    Write-Host "Subscription Move was selected."
-    Write-Host "Evaluating $subMoveCount subscriptions to move."
+    Write-Host "`n**Subscription Move was selected.**"
+    Write-Host "`nEvaluating $subMoveCount subscriptions to move."
 
     for ($row = 0; $row -lt $csvManagementGroupStructure.count; $row++){
         if ($csvManagementGroupStructure[$row].Subscription){
